@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-"""
-FreeShow Service Builder — Production Grade
+"""FreeShow Service Builder — Production Grade
 Templates referenced by ID (not by name) for proper FreeShow integration.
 """
 
-import argparse
 import hashlib
 import json
 import logging
@@ -25,7 +23,6 @@ VERSE_MATCH_THRESHOLD = 88
 BOOK_MATCH_THRESHOLD = 85
 
 # --- TEMPLATE NAMES ---
-# Change these if you rename or create new templates in FreeShow.
 SONG_TEMPLATE_NAME = "0-Canciones"
 BIBLE_TEMPLATE_NAME = "0-Biblia"
 # ----------------------
@@ -165,7 +162,6 @@ class TXTParser:
             "ranges": ranges
         }
 
-    # GUI backward-compatibility alias
     _parse_verse_ref = _parse_verse
 
 
@@ -236,7 +232,6 @@ class SongMatcher:
                 refs.append({"id": None, "raw": q})
         return refs, data
 
-    # GUI backward-compatibility aliases
     search_songs = search
     match_songs = match
 
@@ -493,7 +488,6 @@ class BibleExtractor:
             "media": {}
         }
 
-    # GUI backward-compatibility aliases
     preview_verse = preview
     get_verses_as_show = build_shows
 
@@ -547,15 +541,11 @@ class VerseFileMatcher:
                     pass
         return None, None
 
-    # GUI backward-compatibility alias
     find_verse_file = find
 
 
 class TemplateManager:
-    """Manages FreeShow templates.json in Documents/FreeShow/Config.
-    Templates are keyed by ID; we look them up by human-readable name."""
-
-    _cache: dict[str, str] | None = None  # name -> id
+    _cache: dict[str, str] | None = None
 
     @staticmethod
     def _config_path() -> str:
@@ -577,7 +567,6 @@ class TemplateManager:
 
     @classmethod
     def _build_cache(cls) -> dict[str, str]:
-        """Rebuild name->id cache from disk."""
         templates = cls.load()
         cache: dict[str, str] = {}
         for tid, info in templates.items():
@@ -590,29 +579,24 @@ class TemplateManager:
 
     @classmethod
     def get_id(cls, name: str) -> str | None:
-        """Return the template ID for a given human-readable name."""
         if cls._cache is not None:
             return cls._cache.get(name)
         return cls._build_cache().get(name)
 
     @classmethod
     def ensure(cls, template_names: list[str]) -> dict[str, str]:
-        """Ensure named templates exist in templates.json; create stubs if missing.
-        Returns a mapping of name -> ID for all requested templates."""
         path = cls._config_path()
         templates = cls.load()
         updated = False
         result: dict[str, str] = {}
 
         for name in template_names:
-            # Search existing
             tid = None
             for existing_id, info in templates.items():
                 if isinstance(info, dict) and info.get("name") == name:
                     tid = existing_id
                     break
             if tid is None:
-                # Generate a deterministic short hash ID
                 tid = hashlib.md5(name.encode()).hexdigest()[:11]
                 templates[tid] = cls._make_stub(name)
                 updated = True
@@ -632,7 +616,6 @@ class TemplateManager:
 
     @staticmethod
     def _make_stub(name: str) -> dict:
-        """Build a minimal template entry matching FreeShow\'s format."""
         return {
             "name": name,
             "color": None,
@@ -647,7 +630,7 @@ class TemplateManager:
                             "text": [
                                 {
                                     "value": "Text",
-                                    "style": "font-family:\'Arial\';font:normal 700 condensed 100px \'Arial\';font-size:100px;"
+                                    "style": "font-family:'Arial';font:normal 700 condensed 100px 'Arial';font-size:100px;"
                                 }
                             ]
                         }
@@ -667,7 +650,6 @@ class FreeShowBuilder:
         shows: dict[str, Any] = {}
         order: list[dict] = []
 
-        # Songs section
         if any(r.get("id") for r in song_refs):
             sid = str(uuid.uuid4())
             order.append({"id": sid, "type": "section", "name": SONG_TEMPLATE_NAME, "notes": "", "color": ""})
@@ -681,7 +663,6 @@ class FreeShowBuilder:
             shows[sid] = song_data[sid]
             order.append({"id": sid})
 
-        # Bible section
         if any(r.get("id") for r in bible_refs):
             sid = str(uuid.uuid4())
             order.append({"id": sid, "type": "section", "name": BIBLE_TEMPLATE_NAME, "notes": "", "color": ""})
@@ -695,7 +676,6 @@ class FreeShowBuilder:
             shows[sid] = bible_data[sid]
             order.append({"id": sid})
 
-        # Logo
         if logo_path and os.path.isfile(logo_path):
             lid = os.path.basename(logo_path)
             mid = str(uuid.uuid4())
@@ -738,32 +718,3 @@ class FreeShowBuilder:
                 "files": []
             }, f, indent=2, ensure_ascii=False)
         log.info(f"Project written to {output_path}")
-
-
-def main():
-    parser = argparse.ArgumentParser(description="Build FreeShow .project from schedule")
-    parser.add_argument("--schedule", default="schedule.txt")
-    parser.add_argument("--song-db", default="./database/songs/")
-    parser.add_argument("--bible-db", default="./database/Biblia-Dios-Habla-Hoy.fsb")
-    parser.add_argument("--output", default="./output/service_presentation.project")
-    parser.add_argument("--logo", default="./assets/logo.png")
-    args = parser.parse_args()
-
-    # 1. Ensure templates exist and cache their IDs
-    TemplateManager.ensure([SONG_TEMPLATE_NAME, BIBLE_TEMPLATE_NAME])
-
-    # 2. Parse schedule and match content
-    songs, verses = TXTParser(args.schedule).parse()
-    sm = SongMatcher(args.song_db)
-    be = BibleExtractor(args.bible_db)
-    vm = VerseFileMatcher(args.song_db)
-
-    song_refs, song_data = sm.match(songs)
-    bible_refs, bible_data = be.build_shows(verses, vm=vm)
-
-    # 3. Build and write project
-    FreeShowBuilder().build(song_refs, song_data, bible_refs, bible_data, args.output, logo_path=args.logo)
-
-
-if __name__ == "__main__":
-    main()

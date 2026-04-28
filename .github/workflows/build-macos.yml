@@ -26,6 +26,7 @@ jobs:
         run: |
           pyinstaller --onefile --name FreeShowBuilder-CLI \
             --collect-submodules freeshow_builder \
+            --collect-all PySide6 \
             --paths . \
             scripts/cli_entry.py
       

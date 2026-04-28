@@ -32,15 +32,12 @@ jobs:
           name: freeshow-builder-macos
           path: artifacts/macos/
       
-      - name: Verify artifacts
+      - name: Verify and flatten artifacts
         run: |
           echo "=== Windows ==="
           find artifacts/windows/ -type f
           echo "=== macOS ==="
           find artifacts/macos/ -type f
-      
-      - name: Flatten artifacts
-        run: |
           mkdir release_files
           cp artifacts/windows/* release_files/ 2>/dev/null || true
           cp artifacts/macos/* release_files/ 2>/dev/null || true
@@ -51,3 +48,5 @@ jobs:
         with:
           files: release_files/*
           generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

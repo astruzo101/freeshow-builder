@@ -97,7 +97,11 @@ class BuilderWindow(QMainWindow):
         layout.addWidget(QLabel("Log:"))
         self.log = QTextEdit()
         self.log.setReadOnly(True)
-        self.log.setMaximumBlockCount(100)
+        # PySide6 compatibility: QTextEdit.setMaximumBlockCount not available in all versions
+        try:
+            self.log.document().setMaximumBlockCount(100)
+        except (AttributeError, RuntimeError):
+            pass
         layout.addWidget(self.log)
         
         self.load_templates()
@@ -162,8 +166,6 @@ class BuilderWindow(QMainWindow):
             song_db = self.song_edit.text()
             bible = self.bible_edit.text()
             output = self.output_edit.text()
-            song_tmpl = self.song_template.currentText()
-            bible_tmpl = self.bible_template.currentText()
             
             if not os.path.isfile(schedule):
                 QMessageBox.critical(self, "Error", "Schedule not found: " + schedule)
@@ -171,6 +173,9 @@ class BuilderWindow(QMainWindow):
             if not os.path.isdir(song_db):
                 QMessageBox.critical(self, "Error", "Song folder not found: " + song_db)
                 return
+            
+            song_tmpl = self.song_template.currentText()
+            bible_tmpl = self.bible_template.currentText()
             
             self.log.append("Building with templates: " + song_tmpl + ", " + bible_tmpl)
             self.progress.setValue(25)
@@ -186,17 +191,15 @@ class BuilderWindow(QMainWindow):
             be = BibleExtractor(bible)
             vm = VerseFileMatcher(song_db)
             
-            song_refs, song_data = sm.match(songs, song_tmpl)
+            song_refs, song_data = sm.match(songs)
             self.progress.setValue(70)
             
-            bible_refs, bible_data = be.build_shows(verses, bible_tmpl, vm=vm)
+            bible_refs, bible_data = be.build_shows(verses, vm=vm)
             self.progress.setValue(85)
             
             FreeShowBuilder().build(
                 song_refs, song_data, bible_refs, bible_data,
-                output, logo_path="",
-                song_template_name=song_tmpl,
-                bible_template_name=bible_tmpl,
+                output, logo_path=""
             )
             self.progress.setValue(100)
             

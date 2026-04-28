@@ -14,11 +14,6 @@ from .core import (
 def get_documents_path():
     """Cross-platform Documents folder detection."""
     home = os.path.expanduser("~")
-    # Windows
-    docs = os.path.join(home, "Documents")
-    if os.path.isdir(docs):
-        return docs
-    # macOS
     docs = os.path.join(home, "Documents")
     if os.path.isdir(docs):
         return docs
@@ -28,9 +23,8 @@ def get_documents_path():
 def get_default_paths():
     """Return sensible defaults for each platform."""
     docs = get_documents_path()
-    # FreeShow stores its data in Documents/FreeShow
     freeshow_base = os.path.join(docs, "FreeShow")
-
+    
     return {
         "schedule": "schedule.txt",
         "song_db": os.path.join(freeshow_base, "Shows"),
@@ -42,7 +36,7 @@ def get_default_paths():
 
 def main():
     defaults = get_default_paths()
-
+    
     parser = argparse.ArgumentParser(
         description="Build FreeShow .project from a text schedule",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -70,9 +64,9 @@ Examples:
                         help=f"Template name for verses (default: {BIBLE_TEMPLATE_NAME})")
     parser.add_argument("--gui", action="store_true",
                         help="Launch graphical user interface")
-
+    
     args = parser.parse_args()
-
+    
     if args.gui:
         try:
             from .gui import run_gui
@@ -81,17 +75,15 @@ Examples:
         except ImportError:
             print("GUI dependencies not installed. Install with: pip install freeshow-builder[gui]")
             sys.exit(1)
-
-    # Validate inputs
+    
     if not os.path.isfile(args.schedule):
         print(f"ERROR: Schedule file not found: {args.schedule}")
         sys.exit(1)
-
+    
     if not os.path.isdir(args.song_db):
         print(f"ERROR: Song database directory not found: {args.song_db}")
         sys.exit(1)
-
-    # Build
+    
     print(f"FreeShow Service Builder v1.0.0")
     print(f"Schedule:   {args.schedule}")
     print(f"Song DB:    {args.song_db}")
@@ -100,22 +92,22 @@ Examples:
     print(f"Song template:  {args.song_template}")
     print(f"Bible template: {args.bible_template}")
     print("-" * 50)
-
+    
     TemplateManager.ensure([args.song_template, args.bible_template])
-
+    
     songs, verses = TXTParser(args.schedule).parse()
     sm = SongMatcher(args.song_db)
     be = BibleExtractor(args.bible_db)
     vm = VerseFileMatcher(args.song_db)
-
+    
     song_refs, song_data = sm.match(songs)
     bible_refs, bible_data = be.build_shows(verses, vm=vm)
-
+    
     FreeShowBuilder().build(
         song_refs, song_data, bible_refs, bible_data,
         args.output, logo_path=args.logo
     )
-
+    
     print(f"\nDone! Open {args.output} in FreeShow.")
 
 
