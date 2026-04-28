@@ -22,11 +22,11 @@ SONG_MATCH_THRESHOLD = 80
 VERSE_MATCH_THRESHOLD = 88
 BOOK_MATCH_THRESHOLD = 85
 
-# --- TEMPLATE NAMES ---
-# Change these if you rename or create new templates in FreeShow.
+# --- DEFAULT TEMPLATE NAMES ---
+# These are defaults; callers can override via arguments.
 SONG_TEMPLATE_NAME = "0-Canciones"
 BIBLE_TEMPLATE_NAME = "0-Biblia"
-# ----------------------
+# ------------------------------
 
 
 def now() -> int:
@@ -197,9 +197,12 @@ class SongMatcher:
         results = process.extract(query, list(self.index.keys()), scorer=fuzz.WRatio, limit=limit)
         return [(r[0], r[1]) for r in results if isinstance(r, (list, tuple)) and len(r) >= 2 and r[1] >= 30]
 
-    def match(self, queries: list[str]) -> tuple[list[dict], dict[str, dict]]:
+    def match(self, queries: list[str], song_template: str | None = None) -> tuple[list[dict], dict[str, dict]]:
+        """Match songs. Template name is passed explicitly; falls back to default."""
+        template_name = song_template if song_template else SONG_TEMPLATE_NAME
+        tid = TemplateManager.get_id(template_name)
+
         refs, data = [], {}
-        tid = TemplateManager.get_id(SONG_TEMPLATE_NAME)
         for q in queries:
             best = process.extractOne(q, list(self.index.keys()), scorer=fuzz.ratio)
             if not best or not isinstance(best, (list, tuple)) or len(best) < 2 or best[1] < SONG_MATCH_THRESHOLD:
@@ -222,8 +225,9 @@ class SongMatcher:
                     show["settings"] = {}
                 if tid:
                     show["settings"]["template"] = tid
+                    log.info(f"Applied template '{template_name}' (id={tid}) to song '{name}'")
                 else:
-                    log.warning(f"Template ID for '{SONG_TEMPLATE_NAME}' not found; song will not have a template")
+                    log.warning(f"Template '{template_name}' not found; song '{name}' will not have a template")
 
                 data[sid] = show
                 refs.append({"id": sid, "raw": q})
@@ -409,7 +413,10 @@ class BibleExtractor:
             return "[No verses found]"
         return "\n".join(out[:6]) + ("\n..." if len(out) > 6 else "")
 
-    def build_shows(self, refs: list[dict], vm=None, resolution: dict = RESOLUTION, verse_file_matcher=None):
+    def build_shows(self, refs: list[dict], vm=None, resolution: dict = RESOLUTION,
+                    verse_file_matcher=None, bible_template: str | None = None) -> tuple[list[dict], dict[str, dict]]:
+        """Build verse shows. Template name passed explicitly."""
+        template_name = bible_template if bible_template else BIBLE_TEMPLATE_NAME
         show_refs, show_data = [], {}
         if verse_file_matcher is not None and vm is None:
             vm = verse_file_matcher
@@ -436,10 +443,11 @@ class BibleExtractor:
 
             sid = str(uuid.uuid4())
             show_refs.append({"id": sid, "raw": p["raw"]})
-            show_data[sid] = self._build_verse_show(p, cd, resolution, sid)
+            show_data[sid] = self._build_verse_show(p, cd, resolution, sid, template_name)
         return show_refs, show_data
 
-    def _build_verse_show(self, parsed: dict, chapter_data: Any, resolution: dict, show_id: str) -> dict:
+    def _build_verse_show(self, parsed: dict, chapter_data: Any, resolution: dict,
+                         show_id: str, bible_template: str | None = None) -> dict:
         bk, ch, vs = parsed.get("book", ""), parsed.get("chapter"), parsed.get("verses", [])
         title = parsed.get("raw", f"{bk.title()} {ch}:{min(vs)}-{max(vs)}" if vs else f"{bk.title()} {ch}")
         slides: dict[str, Any] = {}
@@ -473,10 +481,14 @@ class BibleExtractor:
             "slides": [{"id": pid}] + [{"id": c} for c in child_ids]
         }
 
-        tid = TemplateManager.get_id(BIBLE_TEMPLATE_NAME)
+        template_name = bible_template if bible_template else BIBLE_TEMPLATE_NAME
+        tid = TemplateManager.get_id(template_name)
         settings: dict[str, Any] = {"activeLayout": lid}
         if tid:
             settings["template"] = tid
+            log.info(f"Applied template '{template_name}' (id={tid}) to verse '{title}'")
+        else:
+            log.warning(f"Template '{template_name}' not found for verse '{title}'")
 
         return {
             "name": title,

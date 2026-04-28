@@ -54,14 +54,17 @@ def prompt_verse() -> dict | None:
         print("  Invalid format. Use: Book Chapter:Verse-Verse (e.g. Romanos 5:10-20)")
 
 
-def interactive_build(song_db: str, bible_db: str, output: str):
-    """Run interactive service builder."""
+def interactive_build(song_db: str, bible_db: str, output: str,
+                      song_template: str = "0-Canciones", bible_template: str = "0-Biblia"):
+    """Run interactive service builder with explicit template names."""
     print("=" * 60)
     print("  FreeShow Service Builder — Interactive Mode")
     print("=" * 60)
-    print(f"Song DB: {song_db}")
-    print(f"Bible:   {bible_db}")
-    print(f"Output:  {output}")
+    print(f"Song DB:      {song_db}")
+    print(f"Bible:        {bible_db}")
+    print(f"Output:       {output}")
+    print(f"Song template:  {song_template}")
+    print(f"Bible template: {bible_template}")
     print("-" * 60)
 
     if not os.path.isdir(song_db):
@@ -89,7 +92,6 @@ def interactive_build(song_db: str, bible_db: str, output: str):
         verse = prompt_verse()
         if verse is None:
             break
-        # Preview verse text
         preview = be.preview(verse)
         print(f"  Preview: {preview[:100]}...")
         confirm = input("  Add this verse? [Y/n]: ").strip().lower()
@@ -112,11 +114,11 @@ def interactive_build(song_db: str, bible_db: str, output: str):
         print("Cancelled.")
         return
 
-    # Build
-    TemplateManager.ensure(["0-Canciones", "0-Biblia"])
+    # Build with explicit template names
+    TemplateManager.ensure([song_template, bible_template])
 
-    song_refs, song_data = sm.match(songs)
-    bible_refs, bible_data = be.build_shows(verses, vm=vm)
+    song_refs, song_data = sm.match(songs, song_template=song_template)
+    bible_refs, bible_data = be.build_shows(verses, vm=vm, bible_template=bible_template)
 
     FreeShowBuilder().build(
         song_refs, song_data, bible_refs, bible_data,

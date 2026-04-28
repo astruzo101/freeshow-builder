@@ -56,9 +56,9 @@ Examples:
     parser.add_argument("--logo", default=defaults["logo"],
                         help=f"Logo image path")
     parser.add_argument("--song-template", default=SONG_TEMPLATE_NAME,
-                        help=f"Template name for songs")
+                        help=f"Template name for songs (default: {SONG_TEMPLATE_NAME})")
     parser.add_argument("--bible-template", default=BIBLE_TEMPLATE_NAME,
-                        help=f"Template name for verses")
+                        help=f"Template name for verses (default: {BIBLE_TEMPLATE_NAME})")
     parser.add_argument("--gui", action="store_true",
                         help="Launch graphical user interface")
     parser.add_argument("--interactive", "-i", action="store_true",
@@ -78,7 +78,9 @@ Examples:
     if args.interactive:
         try:
             from .interactive import interactive_build
-            interactive_build(args.song_db, args.bible_db, args.output)
+            interactive_build(args.song_db, args.bible_db, args.output,
+                            song_template=args.song_template,
+                            bible_template=args.bible_template)
             return
         except KeyboardInterrupt:
             print("\nCancelled.")
@@ -110,8 +112,8 @@ Examples:
     be = BibleExtractor(args.bible_db)
     vm = VerseFileMatcher(args.song_db)
 
-    song_refs, song_data = sm.match(songs)
-    bible_refs, bible_data = be.build_shows(verses, vm=vm)
+    song_refs, song_data = sm.match(songs, song_template=args.song_template)
+    bible_refs, bible_data = be.build_shows(verses, vm=vm, bible_template=args.bible_template)
 
     FreeShowBuilder().build(
         song_refs, song_data, bible_refs, bible_data,

@@ -1,17 +1,18 @@
 """Modern interactive GUI for FreeShow Service Builder.
 Build services on the spot — no schedule.txt needed.
+Templates flow from GUI dropdowns into core engine.
 """
 
 import os
 import sys
 from typing import Any
 
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QFileDialog, QProgressBar,
     QTextEdit, QMessageBox, QComboBox, QListWidget, QListWidgetItem,
-    QSplitter, QFrame, QGroupBox
+    QSplitter, QGroupBox
 )
 
 from .core import (
@@ -34,7 +35,7 @@ class ModernBuilderWindow(QMainWindow):
         self.bible_extractor: BibleExtractor | None = None
         self.verse_matcher: VerseFileMatcher | None = None
 
-        self.service_items: list[dict] = []  # {"type": "song"/"verse", "name": str, "data": Any}
+        self.service_items: list[dict] = []
 
         self._init_ui()
         self._load_databases()
@@ -46,13 +47,13 @@ class ModernBuilderWindow(QMainWindow):
         main_layout.setSpacing(16)
         main_layout.setContentsMargins(16, 16, 16, 16)
 
-        # === LEFT PANEL: Add Items ===
+        # === LEFT PANEL ===
         left = QVBoxLayout()
         left.setSpacing(12)
 
         left.addWidget(QLabel("<h2>FreeShow Service Builder</h2>"))
 
-        # Database settings
+        # Databases
         db_group = QGroupBox("Databases")
         db_layout = QVBoxLayout()
 
@@ -101,7 +102,7 @@ class ModernBuilderWindow(QMainWindow):
         self.song_results.itemDoubleClicked.connect(self.add_song_from_result)
         song_layout.addWidget(self.song_results)
 
-        add_song_btn = QPushButton("➕ Add Selected Song")
+        add_song_btn = QPushButton("+ Add Selected Song")
         add_song_btn.clicked.connect(self.add_song_from_result)
         song_layout.addWidget(add_song_btn)
 
@@ -129,7 +130,7 @@ class ModernBuilderWindow(QMainWindow):
         self.verse_preview.setPlaceholderText("Verse preview will appear here...")
         verse_layout.addWidget(self.verse_preview)
 
-        add_verse_btn = QPushButton("➕ Add This Verse")
+        add_verse_btn = QPushButton("+ Add This Verse")
         add_verse_btn.clicked.connect(self.add_verse)
         verse_layout.addWidget(add_verse_btn)
 
@@ -142,11 +143,11 @@ class ModernBuilderWindow(QMainWindow):
         left_widget.setLayout(left)
         left_widget.setMinimumWidth(380)
 
-        # === RIGHT PANEL: Service Lineup ===
+        # === RIGHT PANEL ===
         right = QVBoxLayout()
         right.setSpacing(12)
 
-        right.addWidget(QLabel("<h3>📋 Service Lineup</h3>"))
+        right.addWidget(QLabel("<h3>Service Lineup</h3>"))
 
         self.service_list = QListWidget()
         self.service_list.setDragDropMode(QListWidget.InternalMove)
@@ -157,25 +158,25 @@ class ModernBuilderWindow(QMainWindow):
         # Controls
         ctrl = QHBoxLayout()
 
-        up_btn = QPushButton("⬆ Up")
-        up_btn.setFixedWidth(70)
+        up_btn = QPushButton("Up")
+        up_btn.setFixedWidth(60)
         up_btn.clicked.connect(self.move_up)
         ctrl.addWidget(up_btn)
 
-        down_btn = QPushButton("⬇ Down")
-        down_btn.setFixedWidth(70)
+        down_btn = QPushButton("Down")
+        down_btn.setFixedWidth(60)
         down_btn.clicked.connect(self.move_down)
         ctrl.addWidget(down_btn)
 
-        rm_btn = QPushButton("🗑 Remove")
-        rm_btn.setFixedWidth(80)
+        rm_btn = QPushButton("Remove")
+        rm_btn.setFixedWidth(70)
         rm_btn.clicked.connect(self.remove_item)
         ctrl.addWidget(rm_btn)
 
         ctrl.addStretch()
 
         clear_btn = QPushButton("Clear All")
-        clear_btn.setFixedWidth(80)
+        clear_btn.setFixedWidth(70)
         clear_btn.clicked.connect(self.clear_all)
         ctrl.addWidget(clear_btn)
 
@@ -195,8 +196,8 @@ class ModernBuilderWindow(QMainWindow):
         self.bible_template.addItem("0-Biblia")
         tmpl.addWidget(self.bible_template, 1)
 
-        refresh = QPushButton("🔄")
-        refresh.setFixedWidth(40)
+        refresh = QPushButton("Refresh")
+        refresh.setFixedWidth(60)
         refresh.setToolTip("Refresh templates from FreeShow")
         refresh.clicked.connect(self.load_templates)
         tmpl.addWidget(refresh)
@@ -219,7 +220,7 @@ class ModernBuilderWindow(QMainWindow):
         self.progress.setRange(0, 100)
         right.addWidget(self.progress)
 
-        self.build_btn = QPushButton("🔨 BUILD PROJECT")
+        self.build_btn = QPushButton("BUILD PROJECT")
         self.build_btn.setStyleSheet("""
             QPushButton {
                 font-size: 18px;
@@ -360,8 +361,8 @@ class ModernBuilderWindow(QMainWindow):
     def _refresh_service_list(self):
         self.service_list.clear()
         for item in self.service_items:
-            icon = "🎵" if item["type"] == "song" else "📖"
-            li = QListWidgetItem(f"{icon} {item['name']}")
+            icon = "Song" if item["type"] == "song" else "Verse"
+            li = QListWidgetItem(f"[{icon}] {item['name']}")
             li.setData(Qt.UserRole, item)
             self.service_list.addItem(li)
 
@@ -418,7 +419,7 @@ class ModernBuilderWindow(QMainWindow):
             idx = self.bible_template.findText("0-Biblia")
             if idx >= 0:
                 self.bible_template.setCurrentIndex(idx)
-        except Exception as e:
+        except Exception:
             pass
 
     def build_project(self):
@@ -435,6 +436,8 @@ class ModernBuilderWindow(QMainWindow):
         try:
             song_tmpl = self.song_template.currentText()
             bible_tmpl = self.bible_template.currentText()
+
+            # Ensure templates exist
             TemplateManager.ensure([song_tmpl, bible_tmpl])
             self.progress.setValue(20)
 
@@ -442,13 +445,14 @@ class ModernBuilderWindow(QMainWindow):
             songs = [item["name"] for item in self.service_items if item["type"] == "song"]
             verses = [item["data"] for item in self.service_items if item["type"] == "verse" and item["data"]]
 
-            song_refs, song_data = self.song_matcher.match(songs)
+            # Build with explicit template names from GUI
+            song_refs, song_data = self.song_matcher.match(songs, song_template=song_tmpl)
             self.progress.setValue(50)
 
             bible_refs, bible_data = [], {}
             if verses and self.bible_extractor:
                 bible_refs, bible_data = self.bible_extractor.build_shows(
-                    verses, vm=self.verse_matcher
+                    verses, vm=self.verse_matcher, bible_template=bible_tmpl
                 )
             self.progress.setValue(80)
 
@@ -458,12 +462,12 @@ class ModernBuilderWindow(QMainWindow):
             )
             self.progress.setValue(100)
 
-            self.status_label.setText(f"✅ Built: {self.output_edit.text()}")
+            self.status_label.setText(f"Built: {self.output_edit.text()}")
             QMessageBox.information(self, "Success", f"Project saved!\n{self.output_edit.text()}")
 
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
-            self.status_label.setText(f"❌ Error: {e}")
+            self.status_label.setText(f"Error: {e}")
         finally:
             self.build_btn.setEnabled(True)
 
