@@ -24,27 +24,30 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: freeshow-builder-windows
-          path: windows/
+          path: artifacts/windows/
       
       - name: Download macOS artifacts
         uses: actions/download-artifact@v4
         with:
           name: freeshow-builder-macos
-          path: macos/
+          path: artifacts/macos/
       
-      - name: List downloaded files
+      - name: Verify artifacts
         run: |
-          echo "Windows artifacts:"
-          ls -la windows/
-          echo "macOS artifacts:"
-          ls -la macos/
+          echo "=== Windows ==="
+          find artifacts/windows/ -type f
+          echo "=== macOS ==="
+          find artifacts/macos/ -type f
+      
+      - name: Flatten artifacts
+        run: |
+          mkdir release_files
+          cp artifacts/windows/* release_files/ 2>/dev/null || true
+          cp artifacts/macos/* release_files/ 2>/dev/null || true
+          ls -la release_files/
       
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            windows/**
-            macos/**
+          files: release_files/*
           generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
