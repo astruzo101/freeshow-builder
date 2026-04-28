@@ -1,23 +1,25 @@
 # FreeShow Service Builder
 
-Build FreeShow service presentations from a simple text schedule file.
+Build FreeShow service presentations from a text schedule or interactively — no file editing required.
 
 ## Features
 
-- **Text-based scheduling** — Write your service in a plain `.txt` file
-- **Automatic song matching** — Fuzzy-searches your `.show` song database
-- **Bible verse generation** — Builds slides from `.fsb`/`.json` Bible files
-- **Template integration** — Auto-applies FreeShow templates by ID
-- **Cross-platform** — Windows & macOS executables, plus Python source
-- **CLI & GUI** — Command-line for power users, graphical app for everyone else
+- **Interactive GUI** — Search songs live, preview Bible verses, drag-and-drop your service lineup
+- **Interactive CLI** — Build services on the spot from the terminal
+- **File-based mode** — Still supports plain `.txt` schedule files for repeatable weekly workflows
+- **Automatic song matching** — Fuzzy-searches your `.show` song database with ranked results
+- **Bible verse generation** — Builds slides from `.fsb`/`.json` Bible files with live preview
+- **Template integration** — Auto-applies FreeShow templates by ID; choose templates per-build from the GUI
+- **Cross-platform executables** — Windows `.exe` and macOS binaries built automatically via GitHub Actions
 
 ## Quick Start (Pre-built Executables)
 
 ### Windows
 1. Download `FreeShowBuilder.exe` from [Releases](../../releases)
 2. Double-click to open the GUI
-3. Select your schedule file, song folder, Bible file, and templates
-4. Click **BUILD PROJECT**
+3. Select your song database folder, Bible file, and templates
+4. Search songs, add verses, arrange your lineup
+5. Click **BUILD PROJECT**
 
 ### macOS
 1. Download `FreeShowBuilder` from [Releases](../../releases)
@@ -26,22 +28,71 @@ Build FreeShow service presentations from a simple text schedule file.
    chmod +x FreeShowBuilder
    ./FreeShowBuilder
    ```
-3. Select your files and click **BUILD PROJECT**
+3. Build your service interactively
 
 ## Quick Start (Python)
 
 ```bash
 pip install freeshow-builder
+
+# Interactive GUI
+build-show --gui
+
+# Interactive CLI
+build-show --interactive
+
+# File-based mode
 build-show --schedule service.txt --song-db "~/Documents/FreeShow/Shows"
 ```
 
-Or launch the GUI:
-```bash
-pip install freeshow-builder[gui]
-build-show --gui
+## Interactive GUI Mode
+
+No schedule file needed. The GUI has two panels:
+
+**Left panel — Add items**
+- **Song search**: Type a name, hit Enter, see fuzzy-matched results. Double-click or click "Add Selected Song"
+- **Verse entry**: Type a reference like `John 3:16-18`, click **Preview** to see the text, then **Add This Verse**
+- **Database selection**: Browse for your song folder and Bible file
+
+**Right panel — Service lineup**
+- Drag and drop to reorder songs and verses
+- Use **Up/Down/Remove** buttons to fine-tune
+- Click **Clear All** to start fresh
+- Select **Song template** and **Bible template** from dropdowns (reads from FreeShow's `templates.json`)
+
+Click **BUILD PROJECT** when ready.
+
+## Interactive CLI Mode
+
+Run `build-show --interactive` and follow the prompts:
+
+```
+============================================================
+  FreeShow Service Builder — Interactive Mode
+============================================================
+
+[SONGS] Add songs to your service
+
+Song name (or 'done' to finish songs): hosanna
+  Matches:
+    1. Hosanna (95%) <<< BEST
+    2. Hosanna (Praise is Rising) (78%)
+  Select (number or Enter for #1):
+  -> Selected: Hosanna
+
+[VERSES] Add Bible references
+
+Bible reference (e.g. 'John 3:16-18', or 'done'): romanos 5:10-20
+  -> Parsed: Romanos 5:10-20
+  Preview: 10. Porque siendo...
+  Add this verse? [Y/n]: y
+
+Build project? [Y/n]: y
+
+✅ Project saved to: service_presentation.project
 ```
 
-## Schedule File Format
+## File-Based Mode (Schedule.txt)
 
 Create a plain text file (`schedule.txt`):
 
@@ -55,6 +106,16 @@ Romans 8:28
 
 - Lines starting with `#` are songs (searched in your song database)
 - Other lines are Bible references (e.g. `John 3:16-18`)
+
+Run:
+```bash
+build-show --schedule schedule.txt
+```
+
+Override templates per-run:
+```bash
+build-show --schedule schedule.txt --song-template "Worship" --bible-template "Scripture"
+```
 
 ## File Structure
 
@@ -70,10 +131,21 @@ FreeShow/
     logo.png                # Optional logo
 ```
 
+## Templates
+
+The builder applies FreeShow templates by their **ID** (not by name), so styling works correctly. The GUI and CLI let you pick template names each time you build.
+
+| Default name | Used for |
+|--------------|----------|
+| `0-Canciones` | Song slides |
+| `0-Biblia` | Bible verse slides |
+
+If these templates don't exist in FreeShow, the builder creates stubs automatically in `templates.json`.
+
 ## Building from Source
 
 ```bash
-git clone https://github.com/yourusername/freeshow-builder.git
+git clone https://github.com/astruzo101/freeshow-builder.git
 cd freeshow-builder
 pip install -e ".[gui,build]"
 
@@ -83,29 +155,12 @@ build-show --schedule schedule.txt
 # Run GUI
 build-show --gui
 
-# Build executables
-pyinstaller --onefile --name FreeShowBuilder scripts/gui_entry.py
+# Run interactive CLI
+build-show --interactive
+
+# Build executables locally
+pyinstaller --onefile --windowed --name FreeShowBuilder scripts/gui_entry.py
 ```
-
-## Configuration
-
-Edit these constants in the code (or use `--song-template` / `--bible-template` flags):
-
-```python
-SONG_TEMPLATE_NAME = "0-Canciones"    # Template for songs
-BIBLE_TEMPLATE_NAME = "0-Biblia"      # Template for verses
-```
-
-## Development
-
-| File | Purpose |
-|------|---------|
-| `freeshow_builder/core.py` | Main engine (parser, matcher, builder) |
-| `freeshow_builder/cli.py` | Command-line interface |
-| `freeshow_builder/gui.py` | PySide6 graphical interface |
-| `scripts/cli_entry.py` | PyInstaller entry point for CLI |
-| `scripts/gui_entry.py` | PyInstaller entry point for GUI |
-| `.github/workflows/` | Auto-build Windows & macOS executables |
 
 ## Auto-Build via GitHub Actions
 
@@ -117,6 +172,18 @@ git push origin v1.0.1
 ```
 
 GitHub Actions will build `.exe` (Windows) and standalone binaries (macOS) and attach them to the release.
+
+## Project Structure
+
+| File | Purpose |
+|------|---------|
+| `freeshow_builder/core.py` | Engine: parser, fuzzy matcher, Bible extractor, template manager, project builder |
+| `freeshow_builder/gui.py` | PySide6 interactive graphical interface |
+| `freeshow_builder/cli.py` | Command-line interface with `--gui`, `--interactive`, and file modes |
+| `freeshow_builder/interactive.py` | Interactive CLI prompts for building without a schedule file |
+| `scripts/cli_entry.py` | PyInstaller entry point for CLI executable |
+| `scripts/gui_entry.py` | PyInstaller entry point for GUI executable |
+| `.github/workflows/` | Auto-build Windows & macOS executables, create GitHub releases |
 
 ## License
 
