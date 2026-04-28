@@ -4,6 +4,9 @@ on:
   push:
     tags: ['v*']
 
+permissions:
+  contents: write
+
 jobs:
   build-windows:
     uses: ./.github/workflows/build-windows.yml
@@ -16,23 +19,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
+      
       - name: Download Windows artifacts
         uses: actions/download-artifact@v4
         with:
           name: freeshow-builder-windows
           path: windows/
-
+      
       - name: Download macOS artifacts
         uses: actions/download-artifact@v4
         with:
           name: freeshow-builder-macos
           path: macos/
-
+      
+      - name: List downloaded files
+        run: |
+          echo "Windows artifacts:"
+          ls -la windows/
+          echo "macOS artifacts:"
+          ls -la macos/
+      
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            windows/*
-            macos/*
+            windows/**
+            macos/**
           generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
