@@ -45,7 +45,7 @@ build-show --gui
 
 Create a plain text file (`schedule.txt`):
 
-```
+```text
 # Amazing Grace
 # How Great Thou Art
 John 3:16-18

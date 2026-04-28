@@ -23,6 +23,7 @@ VERSE_MATCH_THRESHOLD = 88
 BOOK_MATCH_THRESHOLD = 85
 
 # --- TEMPLATE NAMES ---
+# Change these if you rename or create new templates in FreeShow.
 SONG_TEMPLATE_NAME = "0-Canciones"
 BIBLE_TEMPLATE_NAME = "0-Biblia"
 # ----------------------
@@ -226,7 +227,7 @@ class SongMatcher:
 
                 data[sid] = show
                 refs.append({"id": sid, "raw": q})
-                log.info(f"Song '{q}' → '{name}' ({score})")
+                log.info(f"Song '{q}' -> '{name}' ({score})")
             except Exception as e:
                 log.error(f"Failed loading song '{name}': {e}")
                 refs.append({"id": None, "raw": q})

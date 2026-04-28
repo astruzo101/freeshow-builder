@@ -11,17 +11,17 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[gui]"
           pip install pyinstaller
-      
+
       - name: Build CLI executable
         run: |
           pyinstaller --onefile --name FreeShowBuilder-CLI \
@@ -29,7 +29,7 @@ jobs:
             --collect-all PySide6 \
             --paths . \
             scripts/cli_entry.py
-      
+
       - name: Build GUI executable
         run: |
           pyinstaller --onefile --windowed --name FreeShowBuilder \
@@ -37,7 +37,7 @@ jobs:
             --collect-all PySide6 \
             --paths . \
             scripts/gui_entry.py
-      
+
       - name: Package
         run: |
           mkdir release
@@ -46,7 +46,7 @@ jobs:
           cp README.md release/
           chmod +x release/FreeShowBuilder-CLI
           chmod +x release/FreeShowBuilder
-      
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

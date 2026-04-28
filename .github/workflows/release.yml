@@ -19,19 +19,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Download Windows artifacts
         uses: actions/download-artifact@v4
         with:
           name: freeshow-builder-windows
           path: artifacts/windows/
-      
+
       - name: Download macOS artifacts
         uses: actions/download-artifact@v4
         with:
           name: freeshow-builder-macos
           path: artifacts/macos/
-      
+
       - name: Verify and flatten artifacts
         run: |
           echo "=== Windows ==="
@@ -42,7 +42,7 @@ jobs:
           cp artifacts/windows/* release_files/ 2>/dev/null || true
           cp artifacts/macos/* release_files/ 2>/dev/null || true
           ls -la release_files/
-      
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:

@@ -1,4 +1,4 @@
-"""FreeShow Service Builder - Build presentations from text schedules."""
+"""FreeShow Service Builder - Build presentations from text schedules or interactively."""
 __version__ = "1.0.0"
 
 from .core import (
