@@ -20,8 +20,14 @@ SONG_MATCH_THRESHOLD = 80
 VERSE_MATCH_THRESHOLD = 88
 BOOK_MATCH_THRESHOLD = 85
 
+# --- TEMPLATE NAMES (for FreeShow template lookup) ---
 SONG_TEMPLATE_NAME = "0-Canciones"
 BIBLE_TEMPLATE_NAME = "0-Biblia"
+
+# --- SECTION DISPLAY NAMES (shown in FreeShow project list) ---
+SONG_SECTION_NAME = "Canciones"
+BIBLE_SECTION_NAME = "Versos Biblicos"
+# ---------------------------------------------------------------
 
 
 def now() -> int:
@@ -665,7 +671,7 @@ class FreeShowBuilder:
 
             # Add section header when type changes
             if itype != last_type:
-                section_name = SONG_TEMPLATE_NAME if itype == "song" else BIBLE_TEMPLATE_NAME
+                section_name = SONG_SECTION_NAME if itype == "song" else BIBLE_SECTION_NAME
                 section_id = str(uuid.uuid4())
                 order.append({"id": section_id, "type": "section", "name": section_name, "notes": "", "color": ""})
                 shows[section_id] = mk_section_show(section_name)
@@ -725,8 +731,8 @@ class FreeShowBuilder:
 
         if any(r.get("id") for r in song_refs):
             sid = str(uuid.uuid4())
-            order.append({"id": sid, "type": "section", "name": SONG_TEMPLATE_NAME, "notes": "", "color": ""})
-            shows[sid] = mk_section_show(SONG_TEMPLATE_NAME)
+            order.append({"id": sid, "type": "section", "name": SONG_SECTION_NAME, "notes": "", "color": ""})
+            shows[sid] = mk_section_show(SONG_SECTION_NAME)
 
         for ref in song_refs:
             sid = ref.get("id")
@@ -738,8 +744,8 @@ class FreeShowBuilder:
 
         if any(r.get("id") for r in bible_refs):
             sid = str(uuid.uuid4())
-            order.append({"id": sid, "type": "section", "name": BIBLE_TEMPLATE_NAME, "notes": "", "color": ""})
-            shows[sid] = mk_section_show(BIBLE_TEMPLATE_NAME)
+            order.append({"id": sid, "type": "section", "name": BIBLE_SECTION_NAME, "notes": "", "color": ""})
+            shows[sid] = mk_section_show(BIBLE_SECTION_NAME)
 
         for ref in bible_refs:
             sid = ref.get("id")

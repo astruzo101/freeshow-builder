@@ -1,6 +1,7 @@
 """Modern interactive GUI for FreeShow Service Builder.
 Build services on the spot — no schedule.txt needed.
 Preserves mixed song/verse order and supports custom project names.
+Default project name = output filename (without extension).
 """
 
 import os
@@ -18,6 +19,7 @@ from PySide6.QtWidgets import (
 from .core import (
     TXTParser, SongMatcher, BibleExtractor, VerseFileMatcher,
     TemplateManager, FreeShowBuilder,
+    SONG_SECTION_NAME, BIBLE_SECTION_NAME,
 )
 
 
@@ -207,7 +209,8 @@ class ModernBuilderWindow(QMainWindow):
         # Project name
         pn = QHBoxLayout()
         pn.addWidget(QLabel("Project name:"))
-        self.project_name = QLineEdit("Sunday Service")
+        self.project_name = QLineEdit()
+        self.project_name.setPlaceholderText("Auto = filename without .project")
         pn.addWidget(self.project_name, 1)
         right.addLayout(pn)
 
@@ -215,6 +218,7 @@ class ModernBuilderWindow(QMainWindow):
         row = QHBoxLayout()
         row.addWidget(QLabel("Output:"))
         self.output_edit = QLineEdit(self.output_path)
+        self.output_edit.textChanged.connect(self._update_project_name_from_output)
         row.addWidget(self.output_edit, 1)
         btn = QPushButton("Browse...")
         btn.setFixedWidth(80)
@@ -259,6 +263,7 @@ class ModernBuilderWindow(QMainWindow):
         main_layout.addWidget(splitter)
 
         self.load_templates()
+        self._update_project_name_from_output()  # Set initial value
 
     def _default_song_db(self):
         docs = os.path.join(os.path.expanduser("~"), "Documents", "FreeShow", "Shows")
@@ -276,6 +281,20 @@ class ModernBuilderWindow(QMainWindow):
         if len(path) <= max_len:
             return path
         return "..." + path[-(max_len-3):]
+
+    def _update_project_name_from_output(self):
+        """Auto-fill project name from output filename when user hasn't manually edited it."""
+        path = self.output_edit.text().strip()
+        if not path:
+            return
+        # Extract filename without extension
+        base = os.path.basename(path)
+        name, _ = os.path.splitext(base)
+        # Only update if field is empty or was previously auto-set
+        current = self.project_name.text().strip()
+        if not current or current == self._last_auto_name:
+            self.project_name.setText(name)
+            self._last_auto_name = name
 
     def _load_databases(self):
         if self.song_db_path and os.path.isdir(self.song_db_path):
@@ -437,7 +456,13 @@ class ModernBuilderWindow(QMainWindow):
         try:
             song_tmpl = self.song_template.currentText()
             bible_tmpl = self.bible_template.currentText()
-            project_name = self.project_name.text().strip() or "Sunday Service"
+
+            # Project name: use field if user typed something, else derive from filename
+            project_name = self.project_name.text().strip()
+            if not project_name:
+                path = self.output_edit.text().strip()
+                base = os.path.basename(path)
+                project_name, _ = os.path.splitext(base)
 
             TemplateManager.ensure([song_tmpl, bible_tmpl])
             self.progress.setValue(20)
@@ -447,7 +472,6 @@ class ModernBuilderWindow(QMainWindow):
 
             for item in self.service_items:
                 if item["type"] == "song":
-                    # Resolve song
                     song_refs, song_data = self.song_matcher.match([item["name"]], song_template=song_tmpl)
                     if song_refs and song_refs[0].get("id"):
                         ref = song_refs[0]
@@ -458,7 +482,6 @@ class ModernBuilderWindow(QMainWindow):
                             "data": data
                         })
                 else:
-                    # Resolve verse
                     parsed = item.get("data")
                     if parsed and self.bible_extractor:
                         verse_refs, verse_data = self.bible_extractor.build_shows(

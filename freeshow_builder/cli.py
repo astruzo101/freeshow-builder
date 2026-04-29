@@ -60,8 +60,8 @@ Examples:
                         help=f"Template name for songs (default: {SONG_TEMPLATE_NAME})")
     parser.add_argument("--bible-template", default=BIBLE_TEMPLATE_NAME,
                         help=f"Template name for verses (default: {BIBLE_TEMPLATE_NAME})")
-    parser.add_argument("--project-name", default="Service Presentation",
-                        help=f"Project name shown inside FreeShow (default: Service Presentation)")
+    parser.add_argument("--project-name", default=None,
+                        help=f"Project name shown inside FreeShow (default = output filename)")
     parser.add_argument("--gui", action="store_true",
                         help="Launch graphical user interface")
     parser.add_argument("--interactive", "-i", action="store_true",
@@ -100,14 +100,20 @@ Examples:
         print(f"ERROR: Song database directory not found: {args.song_db}")
         sys.exit(1)
 
+    # Derive project name from output filename if not specified
+    project_name = args.project_name
+    if project_name is None:
+        base_name = os.path.basename(args.output)
+        project_name, _ = os.path.splitext(base_name)
+
     print(f"FreeShow Service Builder v1.0.0")
     print(f"Schedule:   {args.schedule}")
     print(f"Song DB:    {args.song_db}")
     print(f"Bible:      {args.bible_db}")
     print(f"Output:     {args.output}")
+    print(f"Project:    {project_name}")
     print(f"Song template:  {args.song_template}")
     print(f"Bible template: {args.bible_template}")
-    print(f"Project name:   {args.project_name}")
     print("-" * 50)
 
     TemplateManager.ensure([args.song_template, args.bible_template])
@@ -125,7 +131,7 @@ Examples:
         args.output, logo_path=args.logo
     )
 
-    print(f"\nDone! Open {args.output} in FreeShow.")
+    print(f"\nDone! Project '{project_name}' saved to {args.output}")
 
 
 if __name__ == "__main__":

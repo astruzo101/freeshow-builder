@@ -9,6 +9,8 @@ import sys
 from .core import (
     TXTParser, SongMatcher, BibleExtractor, VerseFileMatcher,
     TemplateManager, FreeShowBuilder,
+    SONG_TEMPLATE_NAME, BIBLE_TEMPLATE_NAME,
+    SONG_SECTION_NAME, BIBLE_SECTION_NAME,
 )
 
 
@@ -51,19 +53,27 @@ def prompt_verse() -> dict | None:
 
 
 def interactive_build(song_db: str, bible_db: str, output: str,
-                      song_template: str = "0-Canciones",
-                      bible_template: str = "0-Biblia",
-                      project_name: str = "Sunday Service"):
-    """Run interactive service builder with explicit template names and custom project name."""
+                      song_template: str = SONG_TEMPLATE_NAME,
+                      bible_template: str = BIBLE_TEMPLATE_NAME,
+                      project_name: str | None = None):
+    """Run interactive service builder.
+
+    project_name: if None, uses output filename without extension.
+    """
+    # Derive default project name from output filename
+    if project_name is None:
+        base_name = os.path.basename(output)
+        project_name, _ = os.path.splitext(base_name)
+
     print("=" * 60)
     print("  FreeShow Service Builder — Interactive Mode")
     print("=" * 60)
     print(f"Song DB:        {song_db}")
     print(f"Bible:          {bible_db}")
     print(f"Output:         {output}")
+    print(f"Project name:   {project_name}")
     print(f"Song template:  {song_template}")
     print(f"Bible template: {bible_template}")
-    print(f"Project name:   {project_name}")
     print("-" * 60)
 
     if not os.path.isdir(song_db):
@@ -74,9 +84,8 @@ def interactive_build(song_db: str, bible_db: str, output: str,
     be = BibleExtractor(bible_db)
     vm = VerseFileMatcher(song_db)
 
-    items: list[dict] = []  # Ordered mixed items
+    items: list[dict] = []
 
-    # Collect songs and verses in order
     while True:
         print("\n[1] Add song  [2] Add verse  [3] Done")
         choice = input("Choice: ").strip()
@@ -112,7 +121,6 @@ def interactive_build(song_db: str, bible_db: str, output: str,
         print("Cancelled.")
         return
 
-    # Build with mixed order preservation
     TemplateManager.ensure([song_template, bible_template])
 
     builder_items: list[dict] = []
