@@ -1,6 +1,6 @@
 """Modern interactive GUI for FreeShow Service Builder.
 Build services on the spot — no schedule.txt needed.
-Templates flow from GUI dropdowns into core engine.
+Preserves mixed song/verse order and supports custom project names.
 """
 
 import os
@@ -204,6 +204,13 @@ class ModernBuilderWindow(QMainWindow):
 
         right.addLayout(tmpl)
 
+        # Project name
+        pn = QHBoxLayout()
+        pn.addWidget(QLabel("Project name:"))
+        self.project_name = QLineEdit("Sunday Service")
+        pn.addWidget(self.project_name, 1)
+        right.addLayout(pn)
+
         # Output
         row = QHBoxLayout()
         row.addWidget(QLabel("Output:"))
@@ -302,14 +309,12 @@ class ModernBuilderWindow(QMainWindow):
         query = self.song_search.text().strip()
         if not query:
             return
-
         self.song_results.clear()
         results = self.song_matcher.search(query, limit=10)
         for name, score in results:
             item = QListWidgetItem(f"{name}  ({score}%)")
             item.setData(Qt.UserRole, name)
             self.song_results.addItem(item)
-
         if not results:
             self.song_results.addItem("No matches found")
 
@@ -320,7 +325,6 @@ class ModernBuilderWindow(QMainWindow):
         name = item.data(Qt.UserRole)
         if not name:
             return
-
         self.service_items.append({"type": "song", "name": name, "data": None})
         self._refresh_service_list()
         self.song_search.clear()
@@ -334,12 +338,10 @@ class ModernBuilderWindow(QMainWindow):
         text = self.verse_input.text().strip()
         if not text:
             return
-
         parsed = TXTParser._parse_verse(text)
         if not parsed:
             self.verse_preview.setText("Invalid format. Use: Book Chapter:Verse-Verse\n(e.g. John 3:16-18, Romans 8:28)")
             return
-
         preview = self.bible_extractor.preview(parsed)
         self.verse_preview.setText(preview)
         self._current_parsed_verse = parsed
@@ -349,7 +351,6 @@ class ModernBuilderWindow(QMainWindow):
             self.preview_verse()
             if not hasattr(self, '_current_parsed_verse') or not self._current_parsed_verse:
                 return
-
         parsed = self._current_parsed_verse
         self.service_items.append({"type": "verse", "name": parsed['raw'], "data": parsed})
         self._refresh_service_list()
@@ -436,34 +437,54 @@ class ModernBuilderWindow(QMainWindow):
         try:
             song_tmpl = self.song_template.currentText()
             bible_tmpl = self.bible_template.currentText()
+            project_name = self.project_name.text().strip() or "Sunday Service"
 
-            # Ensure templates exist
             TemplateManager.ensure([song_tmpl, bible_tmpl])
             self.progress.setValue(20)
 
-            # Separate songs and verses
-            songs = [item["name"] for item in self.service_items if item["type"] == "song"]
-            verses = [item["data"] for item in self.service_items if item["type"] == "verse" and item["data"]]
+            # Prepare items with resolved data, preserving order
+            builder_items: list[dict] = []
 
-            # Build with explicit template names from GUI
-            song_refs, song_data = self.song_matcher.match(songs, song_template=song_tmpl)
-            self.progress.setValue(50)
+            for item in self.service_items:
+                if item["type"] == "song":
+                    # Resolve song
+                    song_refs, song_data = self.song_matcher.match([item["name"]], song_template=song_tmpl)
+                    if song_refs and song_refs[0].get("id"):
+                        ref = song_refs[0]
+                        data = song_data.get(ref["id"])
+                        builder_items.append({
+                            "type": "song",
+                            "ref": ref,
+                            "data": data
+                        })
+                else:
+                    # Resolve verse
+                    parsed = item.get("data")
+                    if parsed and self.bible_extractor:
+                        verse_refs, verse_data = self.bible_extractor.build_shows(
+                            [parsed], vm=self.verse_matcher, bible_template=bible_tmpl
+                        )
+                        if verse_refs and verse_refs[0].get("id"):
+                            ref = verse_refs[0]
+                            data = verse_data.get(ref["id"])
+                            builder_items.append({
+                                "type": "verse",
+                                "ref": ref,
+                                "data": data
+                            })
 
-            bible_refs, bible_data = [], {}
-            if verses and self.bible_extractor:
-                bible_refs, bible_data = self.bible_extractor.build_shows(
-                    verses, vm=self.verse_matcher, bible_template=bible_tmpl
-                )
-            self.progress.setValue(80)
+            self.progress.setValue(70)
 
-            FreeShowBuilder().build(
-                song_refs, song_data, bible_refs, bible_data,
-                self.output_edit.text(), logo_path=""
+            FreeShowBuilder().build_mixed(
+                builder_items,
+                self.output_edit.text(),
+                project_name=project_name,
+                logo_path=""
             )
             self.progress.setValue(100)
 
-            self.status_label.setText(f"Built: {self.output_edit.text()}")
-            QMessageBox.information(self, "Success", f"Project saved!\n{self.output_edit.text()}")
+            self.status_label.setText(f"Built: {project_name} -> {self.output_edit.text()}")
+            QMessageBox.information(self, "Success", f"Project '{project_name}' saved!\n{self.output_edit.text()}")
 
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))

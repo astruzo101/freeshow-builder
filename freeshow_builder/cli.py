@@ -43,6 +43,7 @@ Examples:
   %(prog)s --interactive             # Build interactively (no file)
   %(prog)s --schedule service.txt    # Custom schedule file
   %(prog)s --gui                     # Launch graphical interface
+  %(prog)s --project-name "Easter Service"  # Custom name in FreeShow
         """
     )
     parser.add_argument("--schedule", default=defaults["schedule"],
@@ -59,6 +60,8 @@ Examples:
                         help=f"Template name for songs (default: {SONG_TEMPLATE_NAME})")
     parser.add_argument("--bible-template", default=BIBLE_TEMPLATE_NAME,
                         help=f"Template name for verses (default: {BIBLE_TEMPLATE_NAME})")
+    parser.add_argument("--project-name", default="Service Presentation",
+                        help=f"Project name shown inside FreeShow (default: Service Presentation)")
     parser.add_argument("--gui", action="store_true",
                         help="Launch graphical user interface")
     parser.add_argument("--interactive", "-i", action="store_true",
@@ -80,7 +83,8 @@ Examples:
             from .interactive import interactive_build
             interactive_build(args.song_db, args.bible_db, args.output,
                             song_template=args.song_template,
-                            bible_template=args.bible_template)
+                            bible_template=args.bible_template,
+                            project_name=args.project_name)
             return
         except KeyboardInterrupt:
             print("\nCancelled.")
@@ -103,6 +107,7 @@ Examples:
     print(f"Output:     {args.output}")
     print(f"Song template:  {args.song_template}")
     print(f"Bible template: {args.bible_template}")
+    print(f"Project name:   {args.project_name}")
     print("-" * 50)
 
     TemplateManager.ensure([args.song_template, args.bible_template])

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""FreeShow Service Builder — Production Grade
-Templates referenced by ID (not by name) for proper FreeShow integration.
-"""
+"""FreeShow Service Builder — Production Grade"""
 
 import hashlib
 import json
@@ -22,11 +20,8 @@ SONG_MATCH_THRESHOLD = 80
 VERSE_MATCH_THRESHOLD = 88
 BOOK_MATCH_THRESHOLD = 85
 
-# --- DEFAULT TEMPLATE NAMES ---
-# These are defaults; callers can override via arguments.
 SONG_TEMPLATE_NAME = "0-Canciones"
 BIBLE_TEMPLATE_NAME = "0-Biblia"
-# ------------------------------
 
 
 def now() -> int:
@@ -93,7 +88,6 @@ class TXTParser:
         if not os.path.isfile(self.filepath):
             log.error(f"Schedule not found: {self.filepath}")
             return songs, verses
-
         with open(self.filepath, "r", encoding="utf-8") as f:
             for raw_line in f:
                 line = raw_line.strip()
@@ -114,10 +108,8 @@ class TXTParser:
         m = re.match(r"^([a-z\d\s]+)\s+([\d:.,\-]+)$", text)
         if not m:
             return None
-
         book_raw = m.group(1).strip()
         ref_part = m.group(2).strip()
-
         if ":" in ref_part:
             ch_str, rest = ref_part.split(":", 1)
             ranges = [p.strip() for p in rest.split(",") if p.strip()]
@@ -130,12 +122,10 @@ class TXTParser:
                 return None
             ch_str, rest = parts[0].strip(), parts[1].strip()
             ranges = [p.strip() for p in rest.split(",") if p.strip()]
-
         try:
             chapter = int(ch_str)
         except ValueError:
             return None
-
         verses = []
         for part in ranges:
             if "-" in part:
@@ -154,7 +144,6 @@ class TXTParser:
                 except ValueError:
                     continue
         verses.sort()
-
         return {
             "raw": f"{book_raw.title()} {chapter}:{','.join(ranges)}",
             "book": book_raw,
@@ -198,10 +187,8 @@ class SongMatcher:
         return [(r[0], r[1]) for r in results if isinstance(r, (list, tuple)) and len(r) >= 2 and r[1] >= 30]
 
     def match(self, queries: list[str], song_template: str | None = None) -> tuple[list[dict], dict[str, dict]]:
-        """Match songs. Template name is passed explicitly; falls back to default."""
         template_name = song_template if song_template else SONG_TEMPLATE_NAME
         tid = TemplateManager.get_id(template_name)
-
         refs, data = [], {}
         for q in queries:
             best = process.extractOne(q, list(self.index.keys()), scorer=fuzz.ratio)
@@ -209,7 +196,6 @@ class SongMatcher:
                 log.warning(f"No match for song '{q}'")
                 refs.append({"id": None, "raw": q})
                 continue
-
             name, score = best[0], best[1]
             try:
                 with open(self.index[name], "r", encoding="utf-8") as f:
@@ -219,7 +205,6 @@ class SongMatcher:
                 if not show:
                     refs.append({"id": None, "raw": q})
                     continue
-
                 show["settings"] = show.get("settings", {})
                 if not isinstance(show["settings"], dict):
                     show["settings"] = {}
@@ -228,7 +213,6 @@ class SongMatcher:
                     log.info(f"Applied template '{template_name}' (id={tid}) to song '{name}'")
                 else:
                     log.warning(f"Template '{template_name}' not found; song '{name}' will not have a template")
-
                 data[sid] = show
                 refs.append({"id": sid, "raw": q})
                 log.info(f"Song '{q}' -> '{name}' ({score})")
@@ -415,7 +399,6 @@ class BibleExtractor:
 
     def build_shows(self, refs: list[dict], vm=None, resolution: dict = RESOLUTION,
                     verse_file_matcher=None, bible_template: str | None = None) -> tuple[list[dict], dict[str, dict]]:
-        """Build verse shows. Template name passed explicitly."""
         template_name = bible_template if bible_template else BIBLE_TEMPLATE_NAME
         show_refs, show_data = [], {}
         if verse_file_matcher is not None and vm is None:
@@ -427,7 +410,6 @@ class BibleExtractor:
                     show_refs.append({"id": sid, "raw": p["raw"]})
                     show_data[sid] = d
                     continue
-
             bk, ch, vs = p.get("book", ""), p.get("chapter"), p.get("verses", [])
             key = self._book_key(bk)
             if not key:
@@ -440,7 +422,6 @@ class BibleExtractor:
                 log.warning(f"Chapter {ch} not found in {bk}")
                 show_refs.append({"id": None, "raw": p["raw"]})
                 continue
-
             sid = str(uuid.uuid4())
             show_refs.append({"id": sid, "raw": p["raw"]})
             show_data[sid] = self._build_verse_show(p, cd, resolution, sid, template_name)
@@ -453,7 +434,6 @@ class BibleExtractor:
         slides: dict[str, Any] = {}
         layouts: dict[str, Any] = {}
         child_ids: list[str] = []
-
         pid = str(uuid.uuid4())
         slides[pid] = {
             "group": "",
@@ -464,23 +444,19 @@ class BibleExtractor:
                              "top:400px;left:50px;height:200px;width:1820px;", "")],
             "children": []
         }
-
         for v in vs:
             cid = str(uuid.uuid4())
             child_ids.append(cid)
             text = strip_notes(self._verse_text(chapter_data, v))
             slides[cid] = mk_child_slide(f"{v}  {text}", resolution)
-
         if child_ids:
             slides[pid]["children"] = child_ids
-
         lid = str(uuid.uuid4())
         layouts[lid] = {
             "name": "Default",
             "notes": "",
             "slides": [{"id": pid}] + [{"id": c} for c in child_ids]
         }
-
         template_name = bible_template if bible_template else BIBLE_TEMPLATE_NAME
         tid = TemplateManager.get_id(template_name)
         settings: dict[str, Any] = {"activeLayout": lid}
@@ -489,7 +465,6 @@ class BibleExtractor:
             log.info(f"Applied template '{template_name}' (id={tid}) to verse '{title}'")
         else:
             log.warning(f"Template '{template_name}' not found for verse '{title}'")
-
         return {
             "name": title,
             "category": None,
@@ -602,7 +577,6 @@ class TemplateManager:
         templates = cls.load()
         updated = False
         result: dict[str, str] = {}
-
         for name in template_names:
             tid = None
             for existing_id, info in templates.items():
@@ -615,7 +589,6 @@ class TemplateManager:
                 updated = True
                 log.info(f"Created template stub: {name} (id={tid})")
             result[name] = tid
-
         if updated:
             os.makedirs(os.path.dirname(path), exist_ok=True)
             with open(path, "w", encoding="utf-8") as f:
@@ -623,7 +596,6 @@ class TemplateManager:
             log.info(f"Updated templates.json: {path}")
         else:
             log.info("All templates already present in templates.json")
-
         cls._cache = result
         return result
 
@@ -659,7 +631,95 @@ class TemplateManager:
 
 
 class FreeShowBuilder:
+    """Builds a FreeShow .project file.
+
+    Two APIs:
+      - build_mixed(items, output_path, project_name, logo_path)
+        Preserves mixed song/verse order. Used by GUI and interactive CLI.
+      - build(song_refs, song_data, bible_refs, bible_data, output_path, logo_path)
+        Groups all songs then all verses. Legacy file-based mode.
+    """
+
+    def build_mixed(self, items: list[dict], output_path: str,
+                    project_name: str = "Service Presentation", logo_path: str = "") -> None:
+        """Build project preserving mixed item order.
+
+        items: list of dicts with keys:
+            - "type": "song" or "verse"
+            - "ref": {"id": str|None, "raw": str}
+            - "data": dict (the show object) or None
+        """
+        shows: dict[str, Any] = {}
+        order: list[dict] = []
+        last_type: str | None = None
+
+        for item in items:
+            itype = item["type"]
+            ref = item.get("ref", {})
+            data = item.get("data")
+            sid = ref.get("id") if ref else None
+
+            if not sid or not data:
+                log.warning(f"Skipping unmatched {itype}: {ref.get('raw', '') if ref else ''}")
+                continue
+
+            # Add section header when type changes
+            if itype != last_type:
+                section_name = SONG_TEMPLATE_NAME if itype == "song" else BIBLE_TEMPLATE_NAME
+                section_id = str(uuid.uuid4())
+                order.append({"id": section_id, "type": "section", "name": section_name, "notes": "", "color": ""})
+                shows[section_id] = mk_section_show(section_name)
+                last_type = itype
+
+            shows[sid] = data
+            order.append({"id": sid})
+
+        # Optional logo
+        if logo_path and os.path.isfile(logo_path):
+            lid = os.path.basename(logo_path)
+            mid = str(uuid.uuid4())
+            sid = str(uuid.uuid4())
+            lyid = str(uuid.uuid4())
+            shows[lid] = {
+                "name": "Logo",
+                "category": None,
+                "settings": {"activeLayout": lyid, "template": None},
+                "timestamps": {"created": now(), "modified": now(), "used": None},
+                "meta": {},
+                "slides": {
+                    sid: {
+                        "group": "",
+                        "color": None,
+                        "settings": {},
+                        "notes": "",
+                        "items": [{"type": "media", "src": mid, "style": "top:0;left:0;height:100%;width:100%;"}]
+                    }
+                },
+                "layouts": {
+                    lyid: {"name": "Default", "notes": "", "slides": [{"id": sid, "background": mid}]}
+                },
+                "media": {mid: {"path": logo_path, "name": os.path.basename(logo_path)}}
+            }
+            order.insert(0, {"id": lid})
+
+        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump({
+                "project": {
+                    "name": project_name,
+                    "created": now(),
+                    "modified": now(),
+                    "parent": "/",
+                    "shows": order
+                },
+                "shows": shows,
+                "overlays": {},
+                "files": []
+            }, f, indent=2, ensure_ascii=False)
+        log.info(f"Project '{project_name}' written to {output_path}")
+
     def build(self, song_refs, song_data, bible_refs, bible_data, output_path, logo_path=""):
+        """Legacy API: groups all songs, then all verses."""
         shows: dict[str, Any] = {}
         order: list[dict] = []
 
